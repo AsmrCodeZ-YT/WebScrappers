@@ -1,0 +1,3 @@
+rich==14.2.0
+pandas
+pyfiglet==1.0.4
