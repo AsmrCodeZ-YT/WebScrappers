@@ -4,7 +4,7 @@ import re
 import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
-
+import json
 import aiohttp
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -35,6 +35,8 @@ LIST_ENDPOINT = "https://candidateapi.jobvision.ir/api/v1/JobPost/List"
 DETAIL_ENDPOINT = "https://candidateapi.jobvision.ir/api/v1/JobPost/Detail"
 PAGE_SIZE = 30
 DETAIL_CONCURRENCY = 10  # Max parallel detail requests
+TOTAL_PAGE = 5
+
 
 # Time range options
 TIME_RANGES: Dict[int, str] = {
@@ -131,24 +133,24 @@ class JobVisionScraper:
             logger.exception(f"Request failed: {method} {url}")
             return None
 
-    async def get_total_pages(self) -> int:
-        """Fetch first page to determine total number of pages."""
-        payload = {
-            "pageSize": PAGE_SIZE,
-            "requestedPage": 1,
-            "sortBy": 0,
-            "searchTimeRange": self.search_time_range,
-            "jobCategoryUrlTitle": self.category,
-            "searchId": "null",
-        }
-        data = await self._fetch_json("POST", LIST_ENDPOINT, json_payload=payload)
-        if not data or "data" not in data:
-            logger.error("Could not fetch initial page for page count.")
-            return 0
-        total_count = data["data"].get("totalCount", 0)
-        total_pages = (total_count + PAGE_SIZE - 1) // PAGE_SIZE
-        logger.info(f"Total job posts: {total_count}, total pages: {total_pages}")
-        return total_pages
+    # async def get_total_pages(self) -> int:
+    #     """Fetch first page to determine total number of pages."""
+    #     payload = {
+    #         "pageSize": PAGE_SIZE,
+    #         "requestedPage": 1,
+    #         "sortBy": 0,
+    #         "searchTimeRange": self.search_time_range,
+    #         "jobCategoryUrlTitle": self.category,
+    #         "searchId": "null",
+    #     }
+    #     data = await self._fetch_json("POST", LIST_ENDPOINT, json_payload=payload)
+    #     if not data or "data" not in data:
+    #         logger.error("Could not fetch initial page for page count.")
+    #         return 0
+    #     total_count = data["data"].get("totalCount", 0)
+    #     total_pages = (total_count + PAGE_SIZE - 1) // PAGE_SIZE
+    #     logger.info(f"Total job posts: {total_count}, total pages: {total_pages}")
+    #     return total_pages
 
     async def fetch_page(self, page: int) -> List[Dict[str, Any]]:
         """Fetch a single page of job postings and return flattened records."""
@@ -169,7 +171,7 @@ class JobVisionScraper:
 
     async def fetch_all_pages(self) -> pd.DataFrame:
         """Retrieve all job postings across all pages."""
-        total_pages = await self.get_total_pages()
+        total_pages = TOTAL_PAGE
         if total_pages == 0:
             logger.warning("No job posts found.")
             return pd.DataFrame()
